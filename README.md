@@ -8,7 +8,8 @@
 
 Нажмите на значок чтобы увидеть все события за выбранный месяц, по-умолчанию открывается текущий месяц.
 
-<img width="478" height="806" alt="image" src="https://github.com/user-attachments/assets/2c9313f3-92dd-43d3-b85c-e0ab6f8bcd49" />
+<img width="474" height="806" alt="image" src="https://github.com/user-attachments/assets/abce1fd1-35e7-4036-a531-b07b7fdf636a" />
+
 
 
 # Запуск
