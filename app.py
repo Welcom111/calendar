@@ -6,12 +6,12 @@ from pathlib import Path
 
 import caldav
 import keyring
-from PySide6.QtCore import QDate, QObject, QPoint, QRunnable, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
+from PySide6.QtCore import QDate, QObject, QPoint, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap, QPolygon
 from PySide6.QtWidgets import (
-    QApplication, QCalendarWidget, QComboBox, QFrame, QHBoxLayout, QLabel,
+    QApplication, QAbstractItemView, QCalendarWidget, QComboBox, QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel,
     QLineEdit, QListWidget, QListWidgetItem, QMenu, QMessageBox, QPushButton,
-    QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget,
+    QStackedWidget, QSystemTrayIcon, QToolButton, QVBoxLayout, QWidget,
 )
 
 
@@ -34,11 +34,11 @@ def app_icon() -> QIcon:
     p = QPainter(pixmap)
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QColor("#0082c9"))
+    p.setBrush(QColor("#246bfd"))
     p.drawRoundedRect(6, 8, 52, 50, 9, 9)
     p.setBrush(QColor("#ffffff"))
     p.drawRoundedRect(12, 19, 40, 32, 4, 4)
-    p.setBrush(QColor("#0082c9"))
+    p.setBrush(QColor("#246bfd"))
     for x in (18, 29, 40):
         p.drawEllipse(x, 27, 6, 6)
         p.drawEllipse(x, 38, 6, 6)
@@ -46,33 +46,70 @@ def app_icon() -> QIcon:
     return QIcon(pixmap)
 
 
+def chevron_icon(points) -> QIcon:
+    """Create a blue calendar arrow independent of the Windows icon theme."""
+    pixmap = QPixmap(20, 20)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    pen = painter.pen()
+    pen.setColor(QColor("#246bfd"))
+    pen.setWidth(2)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    painter.drawPolyline(QPolygon(points))
+    painter.end()
+    return QIcon(pixmap)
+
+
 STYLE = """
-QWidget { font-family: "Segoe UI"; font-size: 14px; color: #202124; }
-#panel, #clockPanel { background: #f7fbfe; border: 1px solid #b8dff3; border-radius: 14px; }
-QLabel#title { color: #005a8c; font-size: 20px; font-weight: 700; }
+QWidget { font-family: "Segoe UI Variable", "Segoe UI"; font-size: 13px; color: #172033; }
+#panel { background: #f8fafc; border: 1px solid #e5eaf1; border-radius: 22px; }
+#clockPanel { background: #246bfd; border: 1px solid #1857db; border-radius: 16px; }
+QLabel#eyebrow { color: #708096; font-size: 11px; font-weight: 700; }
+QLabel#title { color: #172033; font-size: 23px; font-weight: 700; }
+QLabel#sectionTitle { color: #172033; font-size: 16px; font-weight: 700; }
+QLabel#fieldLabel { color: #536176; font-size: 12px; font-weight: 600; }
+QLabel#helperText { color: #708096; font-size: 11px; }
 QLabel#clock { color: #ffffff; font-size: 24px; font-weight: 700; }
-QLabel#clockDate { color: #e8f6fd; font-size: 12px; }
-QLabel#status { color: #5d7180; }
-QLineEdit, QComboBox { background: #ffffff; color: #005a8c; border: 1px solid #b8dff3;
-    border-radius: 9px; padding: 9px; selection-background-color: #0082c9; }
-QLineEdit:focus, QComboBox:focus { border: 1px solid #0082c9; }
-QComboBox QAbstractItemView { background: #f7fbfe; color: #005a8c; border: 1px solid #b8dff3;
-    selection-background-color: #0082c9; selection-color: white; }
-QPushButton { border: none; background: #d9effb; color: #005a8c; border-radius: 8px; padding: 8px 12px; }
-QPushButton:hover { background: #c5e7f8; }
-QPushButton#primary { background: #0082c9; color: white; font-weight: 600; }
-QPushButton#primary:hover { background: #006da8; }
+QLabel#clockDate { color: #dce8ff; font-size: 12px; }
+QLabel#status { color: #708096; background: #ffffff; border: 1px dashed #d7dee9;
+    border-radius: 12px; padding: 14px; }
+QFrame#settingsCard { background: #ffffff; border: 1px solid #e5eaf1; border-radius: 16px; }
+QFrame#eventCard { background: #ffffff; border: 1px solid #e5eaf1; border-radius: 12px; }
+QFrame#eventAccent { background: #246bfd; border: none; border-radius: 2px; }
+QLabel#eventTime { color: #246bfd; font-size: 11px; font-weight: 700; }
+QLabel#eventTitle { color: #172033; font-size: 14px; font-weight: 600; }
+QLabel#eventMeta { color: #708096; font-size: 11px; }
+QLineEdit, QComboBox { min-height: 22px; background: #f8fafc; color: #172033;
+    border: 1px solid #d7dee9; border-radius: 10px; padding: 8px 11px;
+    selection-background-color: #246bfd; }
+QLineEdit:hover, QComboBox:hover { border-color: #aebbd0; }
+QLineEdit:focus, QComboBox:focus { background: #ffffff; border: 2px solid #246bfd; padding: 7px 10px; }
+QPushButton { border: none; background: #edf2f8; color: #344258; border-radius: 10px;
+    padding: 9px 13px; font-weight: 600; }
+QPushButton:hover { background: #e2e9f3; }
+QPushButton:pressed { background: #d6dfec; }
+QPushButton#iconButton { font-size: 17px; padding: 0; }
+QPushButton#primary { background: #246bfd; color: white; }
+QPushButton#primary:hover { background: #1857db; }
 QListWidget { border: none; background: transparent; outline: none; }
-QListWidget::item { padding: 10px; border-bottom: 1px solid #dceef8; }
-QListWidget::item:selected { background: #d9effb; color: #005a8c; border-radius: 7px; }
-QCalendarWidget QWidget { alternate-background-color: #eaf6fc; }
-QCalendarWidget QAbstractItemView { background: #ffffff; color: #202124;
-    selection-background-color: #0082c9; selection-color: white; outline: none; }
-QCalendarWidget QToolButton { color: #005a8c; background: #d9effb; border-radius: 7px; padding: 5px; }
-QCalendarWidget QMenu { background: #f7fbfe; color: #005a8c; }
-QMessageBox { background: #f7fbfe; }
-QMessageBox QLabel { color: #202124; min-width: 260px; }
-QMessageBox QPushButton { background: #0082c9; color: white; min-width: 82px; }
+QListWidget::item { background: transparent; border: none; padding: 3px 0; }
+QCalendarWidget { background: #ffffff; border: 1px solid #e5eaf1; border-radius: 16px; }
+QCalendarWidget QWidget#qt_calendar_navigationbar { background: #ffffff; border-bottom: 1px solid #edf1f6; }
+QCalendarWidget QAbstractItemView { background: #ffffff; color: #344258; border: none;
+    selection-background-color: #246bfd; selection-color: white; outline: none; }
+QCalendarWidget QToolButton { color: #344258; background: transparent; border-radius: 8px;
+    padding: 6px; font-weight: 600; }
+QCalendarWidget QToolButton:hover { background: #edf2f8; }
+QCalendarWidget QMenu { background: #ffffff; color: #172033; border: 1px solid #d7dee9; }
+QScrollBar:vertical { width: 7px; background: transparent; margin: 2px 0; }
+QScrollBar::handle:vertical { background: #c7d1df; border-radius: 3px; min-height: 28px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QMessageBox { background: #f8fafc; }
+QMessageBox QLabel { color: #172033; min-width: 260px; }
+QMessageBox QPushButton { background: #246bfd; color: white; min-width: 82px; }
 """
 
 
@@ -105,7 +142,7 @@ class ClockWidget(QFrame):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedSize(245, 68)
-        self.setStyleSheet(STYLE + "#clockPanel { background: #0082c9; border-color: #006da8; }")
+        self.setStyleSheet(STYLE)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 5, 14, 6)
         layout.setSpacing(0)
@@ -135,6 +172,39 @@ class ClockWidget(QFrame):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
+
+
+class EventCard(QFrame):
+    def __init__(self, event):
+        super().__init__()
+        self.setObjectName("eventCard")
+        row = QHBoxLayout(self)
+        row.setContentsMargins(10, 9, 12, 9)
+        row.setSpacing(11)
+
+        accent = QFrame()
+        accent.setObjectName("eventAccent")
+        accent.setFixedWidth(4)
+        row.addWidget(accent)
+
+        content = QVBoxLayout()
+        content.setSpacing(2)
+        when = event["when"]
+        time_text = when.strftime("%d.%m") + ("  ·  весь день" if event["all_day"] else when.strftime("  ·  %H:%M"))
+        time_label = QLabel(time_text.upper())
+        time_label.setObjectName("eventTime")
+        title = QLabel(event["summary"])
+        title.setObjectName("eventTitle")
+        title.setWordWrap(True)
+        content.addWidget(time_label)
+        content.addWidget(title)
+        meta_parts = [part for part in (event["location"], event["calendar"]) if part]
+        if meta_parts:
+            meta = QLabel("  ·  ".join(meta_parts))
+            meta.setObjectName("eventMeta")
+            meta.setWordWrap(True)
+            content.addWidget(meta)
+        row.addLayout(content, 1)
 
 
 class CalendarWindow(QWidget):
@@ -172,9 +242,14 @@ class CalendarWindow(QWidget):
         outer.setContentsMargins(8, 8, 8, 8)
         panel = QFrame()
         panel.setObjectName("panel")
+        shadow = QGraphicsDropShadowEffect(panel)
+        shadow.setBlurRadius(32)
+        shadow.setOffset(0, 8)
+        shadow.setColor(QColor(22, 32, 51, 45))
+        panel.setGraphicsEffect(shadow)
         outer.addWidget(panel)
         root = QVBoxLayout(panel)
-        root.setContentsMargins(18, 18, 18, 18)
+        root.setContentsMargins(20, 20, 20, 20)
         self.pages = QStackedWidget()
         root.addWidget(self.pages)
         self.pages.addWidget(self.build_calendar_page())
@@ -185,22 +260,41 @@ class CalendarWindow(QWidget):
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
         header = QHBoxLayout()
+        heading = QVBoxLayout()
+        heading.setSpacing(1)
+        eyebrow = QLabel("CALDAV · МОИ СОБЫТИЯ")
+        eyebrow.setObjectName("eyebrow")
         title = QLabel("Календарь")
         title.setObjectName("title")
         settings = QPushButton("⚙")
-        settings.setFixedSize(38, 38)
+        settings.setObjectName("iconButton")
+        settings.setToolTip("Настройки CalDAV")
+        settings.setFixedSize(40, 40)
         settings.clicked.connect(self.open_settings)
-        header.addWidget(title)
+        heading.addWidget(eyebrow)
+        heading.addWidget(title)
+        header.addLayout(heading)
         header.addStretch()
         header.addWidget(settings)
         layout.addLayout(header)
         self.calendar = QCalendarWidget()
         self.calendar.setGridVisible(False)
+        self.calendar.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         self.calendar.setFirstDayOfWeek(Qt.DayOfWeek.Monday)
+        self.calendar.setFixedHeight(285)
+        previous = self.calendar.findChild(QToolButton, "qt_calendar_prevmonth")
+        following = self.calendar.findChild(QToolButton, "qt_calendar_nextmonth")
+        if previous:
+            previous.setIcon(chevron_icon([QPoint(12, 5), QPoint(7, 10), QPoint(12, 15)]))
+            previous.setIconSize(QSize(20, 20))
+        if following:
+            following.setIcon(chevron_icon([QPoint(8, 5), QPoint(13, 10), QPoint(8, 15)]))
+            following.setIconSize(QSize(20, 20))
         self.calendar.currentPageChanged.connect(self.month_changed)
         layout.addWidget(self.calendar)
         self.range_label = QLabel()
-        self.range_label.setObjectName("title")
+        self.range_label.setObjectName("sectionTitle")
+        layout.addSpacing(6)
         layout.addWidget(self.range_label)
         self.status = QLabel()
         self.status.setObjectName("status")
@@ -208,6 +302,8 @@ class CalendarWindow(QWidget):
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
         self.events = QListWidget()
+        self.events.setSpacing(2)
+        self.events.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         layout.addWidget(self.events, 1)
         return page
 
@@ -224,23 +320,44 @@ class CalendarWindow(QWidget):
         header.addStretch()
         header.addWidget(title)
         layout.addLayout(header)
-        layout.addSpacing(15)
-        layout.addWidget(QLabel("URL CalDAV"))
+        layout.addSpacing(18)
+        card = QFrame()
+        card.setObjectName("settingsCard")
+        form = QVBoxLayout(card)
+        form.setContentsMargins(16, 16, 16, 16)
+        form.setSpacing(7)
+        intro = QLabel("Подключение к календарю")
+        intro.setObjectName("sectionTitle")
+        form.addWidget(intro)
+        hint = QLabel("Данные хранятся локально, пароль — в защищённом хранилище Windows.")
+        hint.setObjectName("helperText")
+        hint.setWordWrap(True)
+        form.addWidget(hint)
+        field = QLabel("URL CalDAV")
+        field.setObjectName("fieldLabel")
+        form.addWidget(field)
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("https://cloud.example.com/remote.php/dav")
-        layout.addWidget(self.url_input)
-        layout.addWidget(QLabel("Имя пользователя"))
+        form.addWidget(self.url_input)
+        field = QLabel("Имя пользователя")
+        field.setObjectName("fieldLabel")
+        form.addWidget(field)
         self.user_input = QLineEdit()
-        layout.addWidget(self.user_input)
-        layout.addWidget(QLabel("Пароль приложения"))
+        form.addWidget(self.user_input)
+        field = QLabel("Пароль приложения")
+        field.setObjectName("fieldLabel")
+        form.addWidget(field)
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setPlaceholderText("Оставьте пустым, чтобы не менять")
-        layout.addWidget(self.password_input)
-        layout.addWidget(QLabel("Название календаря (необязательно)"))
+        form.addWidget(self.password_input)
+        field = QLabel("Название календаря (необязательно)")
+        field.setObjectName("fieldLabel")
+        form.addWidget(field)
         self.calendar_input = QLineEdit()
         self.calendar_input.setPlaceholderText("Пусто — показывать все календари")
-        layout.addWidget(self.calendar_input)
+        form.addWidget(self.calendar_input)
+        layout.addWidget(card)
         test = QPushButton("Проверить подключение")
         test.clicked.connect(self.test_connection)
         layout.addWidget(test)
@@ -373,14 +490,12 @@ class CalendarWindow(QWidget):
         self.status.setText("Событий нет" if not data else "")
         self.status.setVisible(not data)
         for event in data:
-            when = event["when"]
-            prefix = when.strftime("%d.%m") + (" · весь день" if event["all_day"] else when.strftime(" · %H:%M"))
-            text = f"{prefix}\n{event['summary']}"
-            if event["location"]:
-                text += f"\n{event['location']}"
-            item = QListWidgetItem(text)
+            card = EventCard(event)
+            item = QListWidgetItem()
+            item.setSizeHint(QSize(0, card.sizeHint().height() + 6))
             item.setToolTip(event["calendar"])
             self.events.addItem(item)
+            self.events.setItemWidget(item, card)
 
     def events_failed(self, worker, generation, error):
         self.workers.discard(worker)
